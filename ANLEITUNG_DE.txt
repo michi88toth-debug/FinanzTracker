@@ -1,0 +1,42 @@
+FINANZTRACKER – ANDROID-PROJEKT
+
+WAS ENTHALTEN IST
+- Android-Projekt als erste Build-Basis
+- Münz-Appsymbol
+- vorhandene FinanzTracker-Weboberfläche lokal im App-Paket
+- GitHub-Actions-Workflow zum Erstellen einer Debug-APK
+
+WICHTIG
+Diese ZIP ist ein Quellcode-Projekt, keine fertige oder getestete APK.
+Die erste APK ist eine Testversion. Die direkte Google-Drive-/OneDrive-Anbindung,
+automatische Cloud-Synchronisierung und eine vollständige Prüfung der Datenspeicherung
+sind noch nicht umgesetzt bzw. müssen auf dem Gerät geprüft werden.
+
+VORGEHEN AUF DEM SMARTPHONE
+1. Diese ZIP-Datei herunterladen.
+2. Auf GitHub das Repository FinanzTracker öffnen.
+3. Im Repository auf Add file / Upload files gehen.
+4. Die ZIP-Datei NICHT als ZIP hochladen. Zuerst mit der Dateien-App entpacken.
+5. Alle entpackten Projektdateien und Ordner hochladen. Wichtig sind insbesondere:
+   - app/
+   - .github/workflows/build-apk.yml
+   - build.gradle.kts
+   - settings.gradle.kts
+   - gradle.properties
+6. Vorhandene README.md kann ersetzt werden. Danach Commit changes ausführen.
+7. Im Repository den Reiter Actions öffnen.
+8. Workflow „FinanzTracker APK bauen“ auswählen und Run workflow starten.
+   Bei einem Push auf main startet der Workflow auch automatisch.
+9. Wenn der Lauf grün/erfolgreich ist: Lauf öffnen, zu Artifacts scrollen
+   und „FinanzTracker-debug-apk“ herunterladen.
+10. Das heruntergeladene Artifact-ZIP entpacken. Darin liegt app-debug.apk.
+11. APK auf dem Samsung antippen und Androids Installationshinweise beachten.
+
+WENN ACTIONS NICHT ERSCHEINT
+Prüfen, ob das Repository auf main arbeitet und die Datei exakt hier liegt:
+.github/workflows/build-apk.yml
+
+HINWEIS ZUM GITHUB-UPLOAD
+GitHub Mobile zeigt je nach Ansicht unterschiedliche Menüs. Falls Upload files
+nicht angeboten wird, im Chrome-Menü „Desktopwebsite“ aktivieren und die Repository-
+Seite neu laden.
