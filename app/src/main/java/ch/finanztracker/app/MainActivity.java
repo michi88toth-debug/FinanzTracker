@@ -21,7 +21,8 @@ public class MainActivity extends Activity {
   LinearLayout root, entries;
   Spinner account;
   TextView income, expense, balance;
-  int filterMonth = Calendar.getInstance().get(Calendar.MONTH);\n  int filterYear = Calendar.getInstance().get(Calendar.YEAR);
+  int filterMonth = Calendar.getInstance().get(Calendar.MONTH);
+  int filterYear = Calendar.getInstance().get(Calendar.YEAR);
   int navy=0xff142b4a, gold=0xffe2b64f, green=0xff238957, red=0xffc34444;
   byte[] pendingExport;
   String pendingMime, pendingName;
@@ -72,7 +73,7 @@ public class MainActivity extends Activity {
   String money(double n){return String.format(Locale.GERMANY,"CHF %,.2f",n);}
   void buildUi(){
     String selectedAccount = account==null ? null : active();
-    ScrollView scroll=new ScrollView(this);root=vertical();root.setPadding(16,12,16,24);root.setBackgroundColor(0xfff3f5f8);scroll.addView(root);setContentView(scroll);
+    LinearLayout outer=vertical();outer.setBackgroundColor(0xfff3f5f8);ScrollView scroll=new ScrollView(this);root=vertical();root.setPadding(16,12,16,16);root.setBackgroundColor(0xfff3f5f8);scroll.addView(root);outer.addView(scroll,new LinearLayout.LayoutParams(-1,0,1));
     LinearLayout header=vertical();header.setPadding(18,18,18,18);header.setBackground(bg(green,24));
     header.addView(text("🇨🇭  🪙  FinanzTracker",25,Color.WHITE,true));
     header.addView(text("Dein Haushaltsbuch in CHF",13,0xffe5f5eb,false));root.addView(header);
@@ -108,14 +109,18 @@ public class MainActivity extends Activity {
     inc.setBackground(bg(0xffe2f3e9,20));out.setBackground(bg(0xffffe8e8,20));
     inc.addView(text("EINNAHMEN",11,green,true));income=text("CHF 0.00",18,green,true);inc.addView(income);
     out.addView(text("AUSGABEN",11,red,true));expense=text("CHF 0.00",18,red,true);out.addView(expense);
-    cards.addView(inc,new LinearLayout.LayoutParams(0,-2,1));View gap=new View(this);cards.addView(gap,new LinearLayout.LayoutParams(10,1));cards.addView(out,new LinearLayout.LayoutParams(0,-2,1));root.addView(cards);
+    cards.addView(inc,new LinearLayout.LayoutParams(0,-2,1));View gap=new View(this);cards.addView(gap,new LinearLayout.LayoutParams(10,1));cards.addView(out,new LinearLayout.LayoutParams(0,-2,1));
     LinearLayout saldo=vertical();saldo.setPadding(16,14,16,14);saldo.setBackground(bg(0xffe5edf8,20));
-    saldo.addView(text("AKTUELLER SALDO",11,navy,true));balance=text("CHF 0.00",26,navy,true);saldo.addView(balance);root.addView(saldo);
+    saldo.addView(text("AKTUELLER SALDO",11,navy,true));balance=text("CHF 0.00",26,navy,true);saldo.addView(balance);
     root.addView(text("LETZTE BUCHUNGEN",17,navy,true));entries=vertical();root.addView(entries);
     root.addView(text("EXPORT & EINSTELLUNGEN",12,0xff657184,true));
     Button xlsx=button("Excel-Datei (.xlsx) exportieren",navy,Color.WHITE);root.addView(xlsx);xlsx.setOnClickListener(v->exportExcel());
     Button pdf=button("PDF für A4-Druck exportieren",0xff536b89,Color.WHITE);root.addView(pdf);pdf.setOnClickListener(v->exportPdf());
     Button pin=button(getPreferences(0).getBoolean("pin_enabled",false)?"PIN-Schutz: aktiviert":"PIN-Schutz: deaktiviert",0xffe2e7ee,navy);root.addView(pin);pin.setOnClickListener(v->pinSettings());
+    LinearLayout footer=horizontal();footer.setPadding(8,8,8,8);footer.setBackgroundColor(Color.WHITE);
+    footer.addView(out,new LinearLayout.LayoutParams(0,-2,1));View footerGap1=new View(this);footer.addView(footerGap1,new LinearLayout.LayoutParams(5,1));
+    footer.addView(inc,new LinearLayout.LayoutParams(0,-2,1));View footerGap2=new View(this);footer.addView(footerGap2,new LinearLayout.LayoutParams(5,1));
+    footer.addView(saldo,new LinearLayout.LayoutParams(0,-2,1));outer.addView(footer,new LinearLayout.LayoutParams(-1,-2));setContentView(outer);
     refresh();
   }
   boolean inPeriod(String date){
