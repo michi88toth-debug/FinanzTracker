@@ -14,6 +14,8 @@ import java.io.*;
 import java.text.*;
 import java.util.*;
 import java.util.zip.*;
+import java.security.MessageDigest;
+import java.security.SecureRandom;
 
 public class MainActivity extends Activity {
   final ArrayList<String> accounts = new ArrayList<>();
@@ -217,23 +219,41 @@ public class MainActivity extends Activity {
       }).show();
   }
   void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
+  String hashPin(String pin,String salt){
+    try{
+      MessageDigest digest=MessageDigest.getInstance("SHA-256");
+      byte[] bytes=digest.digest((salt+":"+pin).getBytes("UTF-8"));
+      StringBuilder out=new StringBuilder();
+      for(byte b:bytes)out.append(String.format(Locale.US,"%02x",b&0xff));
+      return out.toString();
+    }catch(Exception e){throw new IllegalStateException(e);}
+  }
+  String newPinSalt(){
+    byte[] bytes=new byte[16];new SecureRandom().nextBytes(bytes);
+    StringBuilder out=new StringBuilder();
+    for(byte b:bytes)out.append(String.format(Locale.US,"%02x",b&0xff));
+    return out.toString();
+  }
   void pinSettings(){
     boolean enabled=getPreferences(0).getBoolean("pin_enabled",false);
     LinearLayout box=vertical();EditText pin=new EditText(this);pin.setHint("Neuer PIN (mind. 4 Ziffern)");pin.setInputType(2);box.addView(pin);
     new AlertDialog.Builder(this).setTitle(enabled?"PIN-Schutz verwalten":"PIN-Schutz aktivieren").setView(box)
       .setNegativeButton("Abbrechen",null)
-      .setNeutralButton(enabled?"Deaktivieren":null,(d,w)->{getPreferences(0).edit().putBoolean("pin_enabled",false).remove("pin").apply();buildUi();})
+      .setNeutralButton(enabled?"Deaktivieren":null,(d,w)->{getPreferences(0).edit().putBoolean("pin_enabled",false).remove("pin").remove("pin_hash").remove("pin_salt").apply();buildUi();})
       .setPositiveButton(enabled?"PIN ändern":"Aktivieren",(d,w)->{
-        String p=pin.getText().toString();if(p.length()<4){toast("Der PIN muss mindestens 4 Ziffern haben.");return;}
-        getPreferences(0).edit().putString("pin",p).putBoolean("pin_enabled",true).apply();buildUi();
+        String p=pin.getText().toString();if(p.length()<4||!p.matches("[0-9]+")){toast("Der PIN muss mindestens 4 Ziffern haben.");return;}
+        String salt=newPinSalt();getPreferences(0).edit().putString("pin_salt",salt).putString("pin_hash",hashPin(p,salt)).remove("pin").putBoolean("pin_enabled",true).apply();buildUi();
       }).show();
   }
   void askPin(){
     EditText e=new EditText(this);e.setInputType(2);e.setHint("PIN eingeben");
     AlertDialog dialog=new AlertDialog.Builder(this).setTitle("FinanzTracker gesperrt").setMessage("Bitte PIN eingeben.").setView(e).setCancelable(false).setPositiveButton("Entsperren",null).create();
     dialog.setOnShowListener(v->dialog.getButton(-1).setOnClickListener(b->{
-      if(e.getText().toString().equals(getPreferences(0).getString("pin",""))){dialog.dismiss();}
-      else e.setError("PIN ist nicht korrekt");
+      String entered=e.getText().toString();android.content.SharedPreferences prefs=getPreferences(0);
+      String storedHash=prefs.getString("pin_hash",null),salt=prefs.getString("pin_salt",null);
+      boolean valid=storedHash!=null&&salt!=null&&hashPin(entered,salt).equals(storedHash);
+      if(storedHash==null){String legacy=prefs.getString("pin","");valid=entered.equals(legacy);if(valid){String nextSalt=newPinSalt();prefs.edit().putString("pin_salt",nextSalt).putString("pin_hash",hashPin(entered,nextSalt)).remove("pin").apply();}}
+      if(valid){dialog.dismiss();}else e.setError("PIN ist nicht korrekt");
     }));dialog.show();
   }
   void startExport(byte[] data,String mime,String name){
