@@ -32,5 +32,31 @@ public class MainActivity extends Activity {
  void removeAccount(){String s=active();new AlertDialog.Builder(this).setTitle("Konto löschen?").setMessage("„"+s+"“ und alle zugehörigen Buchungen löschen?").setNegativeButton("Abbrechen",null).setPositiveButton("Löschen",(d,w)->{accounts.remove(s);for(int i=txs.size()-1;i>=0;i--)if(txs.get(i).account.equals(s))txs.remove(i);if(accounts.isEmpty())accounts.add("Hauptkonto");account.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,accounts));save();refresh();}).show();}
  void newTx(){LinearLayout box=col();Spinner typ=new Spinner(this);typ.setAdapter(new ArrayAdapter<>(this,android.R.layout.simple_spinner_dropdown_item,new String[]{"Einnahme","Ausgabe"}));box.addView(typ);EditText date=new EditText(this);date.setHint("Datum JJJJ-MM-TT");date.setText(new SimpleDateFormat("yyyy-MM-dd",Locale.US).format(new Date()));box.addView(date);EditText purpose=new EditText(this);purpose.setHint("Zweck");box.addView(purpose);EditText amount=new EditText(this);amount.setHint("Betrag CHF");amount.setInputType(8194);box.addView(amount);
  new AlertDialog.Builder(this).setTitle("Neue Buchung").setView(box).setNegativeButton("Abbrechen",null).setPositiveButton("Speichern",(d,w)->{try{double n=Double.parseDouble(amount.getText().toString().replace(',','.'));if(n<=0)throw new Exception();txs.add(new Tx(active(),typ.getSelectedItem().toString(),date.getText().toString().trim(),purpose.getText().toString().trim(),n));save();refresh();}catch(Exception e){Toast.makeText(this,"Bitte einen gültigen Betrag eingeben.",Toast.LENGTH_LONG).show();}}).show();}
- void export(){StringBuilder s=new StringBuilder("Konto;Typ;Datum;Zweck;Betrag CHF\\n");for(Tx t:txs)s.append(t.account).append(';').append(t.type).append(';').append(t.date).append(';').append(t.purpose.replace("; ",", ")).append(';').append(String.format(Locale.US,"%.2f",t.amount)).append('\\n');Intent i=new Intent(Intent.ACTION_SEND);i.setType("text/plain");i.putExtra(Intent.EXTRA_SUBJECT,"FinanzTracker Export");i.putExtra(Intent.EXTRA_TEXT,s.toString());startActivity(Intent.createChooser(i,"Export teilen"));}
+ 
+void export() {
+    StringBuilder s = new StringBuilder(
+        "Konto;Typ;Datum;Zweck;Betrag CHF\n"
+    );
+
+    for (Tx t : txs) {
+        s.append(t.account)
+         .append(';')
+         .append(t.type)
+         .append(';')
+         .append(t.date)
+         .append(';')
+         .append(t.purpose.replace("; ", ", "))
+         .append(';')
+         .append(String.format(Locale.US, "%.2f", t.amount))
+         .append('\n');
+    }
+
+    Intent i = new Intent(Intent.ACTION_SEND);
+    i.setType("text/plain");
+    i.putExtra(Intent.EXTRA_SUBJECT, "FinanzTracker Export");
+    i.putExtra(Intent.EXTRA_TEXT, s.toString());
+
+    startActivity(Intent.createChooser(i, "Export teilen"));
+}
+
 }
