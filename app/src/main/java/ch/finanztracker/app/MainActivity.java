@@ -70,6 +70,7 @@ public class MainActivity extends Activity {
   String active(){Object o=account.getSelectedItem();return o==null?accounts.get(0):o.toString();}
   String money(double n){return String.format(Locale.GERMANY,"CHF %,.2f",n);}
   void buildUi(){
+    String selectedAccount = account==null ? null : active();
     ScrollView scroll=new ScrollView(this);root=vertical();root.setPadding(16,12,16,24);root.setBackgroundColor(0xfff3f5f8);scroll.addView(root);setContentView(scroll);
     LinearLayout header=vertical();header.setPadding(18,18,18,18);header.setBackground(bg(navy,24));
     header.addView(text("🪙  FinanzTracker",25,Color.WHITE,true));
@@ -80,6 +81,7 @@ public class MainActivity extends Activity {
     Button manage=button("Verwalten",navy,Color.WHITE);accountRow.addView(manage);root.addView(accountRow);
     manage.setOnClickListener(v->manageAccounts());
     account.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,accounts));
+    if(selectedAccount!=null && accounts.contains(selectedAccount)) account.setSelection(accounts.indexOf(selectedAccount));
     account.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> p){}public void onItemSelected(AdapterView<?> p,View v,int n,long id){refresh();}});
     root.addView(text("ZEITRAUM",12,0xff657184,true));
     LinearLayout periods=horizontal();
@@ -124,9 +126,10 @@ public class MainActivity extends Activity {
   }
   void refresh(){
     if(account==null||income==null||entries==null)return;
-    double i=0,o=0;ArrayList<Tx> list=visible();
+    double i=0,o=0,total=0;ArrayList<Tx> list=visible();
     for(Tx t:list)if(t.type.equals("Einnahme"))i+=t.amount;else o+=t.amount;
-    income.setText(money(i));expense.setText(money(o));balance.setText(money(i-o));entries.removeAllViews();
+    for(Tx t:txs)if(t.account.equals(active()))total+=t.type.equals("Einnahme")?t.amount:-t.amount;
+    income.setText(money(i));expense.setText(money(o));balance.setText(money(total));entries.removeAllViews();
     if(list.isEmpty())entries.addView(text("Noch keine Buchungen in diesem Zeitraum.",14,0xff778292,false));
     for(Tx t:list){
       LinearLayout row=horizontal();row.setPadding(8,8,8,8);row.setBackground(bg(Color.WHITE,14));
