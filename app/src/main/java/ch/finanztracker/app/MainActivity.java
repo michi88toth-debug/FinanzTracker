@@ -1,6 +1,7 @@
 package ch.finanztracker.app;
 
 import android.app.*;
+import android.hardware.biometrics.BiometricPrompt;
 import android.os.*;
 import android.content.*;
 import android.graphics.*;
@@ -123,6 +124,7 @@ public class MainActivity extends Activity {
     Button xlsx=button("Excel-Datei (.xlsx) exportieren",navy,Color.WHITE);root.addView(xlsx);xlsx.setOnClickListener(v->exportExcel());
     Button pdf=button("PDF für A4-Druck exportieren",0xff536b89,Color.WHITE);root.addView(pdf);pdf.setOnClickListener(v->exportPdf());
     Button pin=button(getPreferences(0).getBoolean("pin_enabled",false)?"PIN-Schutz: aktiviert":"PIN-Schutz: deaktiviert",0xffe2e7ee,navy);root.addView(pin);pin.setOnClickListener(v->pinSettings());
+    Button unlock=button("Entsperrmethode wählen",0xffe2e7ee,navy);root.addView(unlock);unlock.setOnClickListener(v->chooseUnlockMethod());
     Button backup=button("Datensicherung erstellen",0xffe2e7ee,navy);root.addView(backup);backup.setOnClickListener(v->exportBackup());
     Button restore=button("Datensicherung wiederherstellen",0xffe2e7ee,navy);root.addView(restore);restore.setOnClickListener(v->importBackup());
     Button cloud=button("Automatische Cloud-Sicherung einrichten",0xffe2e7ee,navy);root.addView(cloud);cloud.setOnClickListener(v->chooseCloudFolder());
@@ -252,7 +254,33 @@ public class MainActivity extends Activity {
         String salt=newPinSalt();getPreferences(0).edit().putString("pin_salt",salt).putString("pin_hash",hashPin(p,salt)).remove("pin").putBoolean("pin_enabled",true).apply();buildUi();
       }).show();
   }
+  void chooseUnlockMethod(){
+    String[] methods={"PIN","Fingerabdruck / Biometrie (Android 9 oder neuer)"};
+    int selected="biometric".equals(getPreferences(0).getString("unlock_method","pin"))?1:0;
+    new AlertDialog.Builder(this).setTitle("Bevorzugte Entsperrmethode").setSingleChoiceItems(methods,selected,(d,w)->{
+      if(w==1&&Build.VERSION.SDK_INT<28){toast("Biometrische Entsperrung wird ab Android 9 unterstützt. PIN bleibt aktiv.");getPreferences(0).edit().putString("unlock_method","pin").apply();}
+      else getPreferences(0).edit().putString("unlock_method",w==1?"biometric":"pin").apply();
+      d.dismiss();
+    }).setNegativeButton("Abbrechen",null).show();
+  }
   void askPin(){
+    if(Build.VERSION.SDK_INT>=28&&"biometric".equals(getPreferences(0).getString("unlock_method","pin"))){
+      try{
+        BiometricPrompt prompt=new BiometricPrompt.Builder(this)
+          .setTitle("FinanzTracker entsperren")
+          .setSubtitle("Mit Fingerabdruck oder Biometrie fortfahren")
+          .setNegativeButton("PIN verwenden",getMainExecutor(),(dialog,which)->showPinDialog())
+          .build();
+        prompt.authenticate(new CancellationSignal(),getMainExecutor(),new BiometricPrompt.AuthenticationCallback(){
+          @Override public void onAuthenticationError(int errorCode,CharSequence errString){runOnUiThread(()->showPinDialog());}
+          @Override public void onAuthenticationFailed(){runOnUiThread(()->toast("Biometrie nicht erkannt. Bitte erneut versuchen oder PIN verwenden."));}
+        });
+        return;
+      }catch(Exception ignored){showPinDialog();return;}
+    }
+    showPinDialog();
+  }
+  void showPinDialog(){
     EditText e=new EditText(this);e.setInputType(2);e.setHint("PIN eingeben");
     AlertDialog dialog=new AlertDialog.Builder(this).setTitle("FinanzTracker gesperrt").setMessage("Bitte PIN eingeben.").setView(e).setCancelable(false).setPositiveButton("Entsperren",null).create();
     dialog.setOnShowListener(v->dialog.getButton(-1).setOnClickListener(b->{
