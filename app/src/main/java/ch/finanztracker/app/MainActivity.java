@@ -122,7 +122,7 @@ public class MainActivity extends Activity {
     Button backup=button("Datensicherung erstellen",0xffe2e7ee,navy);root.addView(backup);backup.setOnClickListener(v->exportBackup());
     Button restore=button("Datensicherung wiederherstellen",0xffe2e7ee,navy);root.addView(restore);restore.setOnClickListener(v->importBackup());
     LinearLayout footer=horizontal();footer.setPadding(8,8,8,8);footer.setBackgroundColor(Color.WHITE);
-    footer.addView(out,new LinearLayout.LayoutParams(0,-2,1));View footerGap1=new View(this);footer.addView(footerGap1,new LinearLayout.LayoutParams(5,1));
+    cards.removeView(out);cards.removeView(inc);footer.addView(out,new LinearLayout.LayoutParams(0,-2,1));View footerGap1=new View(this);footer.addView(footerGap1,new LinearLayout.LayoutParams(5,1));
     footer.addView(inc,new LinearLayout.LayoutParams(0,-2,1));View footerGap2=new View(this);footer.addView(footerGap2,new LinearLayout.LayoutParams(5,1));
     footer.addView(saldo,new LinearLayout.LayoutParams(0,-2,1));outer.addView(footer,new LinearLayout.LayoutParams(-1,-2));setContentView(outer);
     refresh();
