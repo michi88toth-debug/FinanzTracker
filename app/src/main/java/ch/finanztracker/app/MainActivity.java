@@ -250,7 +250,7 @@ public class MainActivity extends Activity {
     try{
       ArrayList<Tx> list=visible();PdfDocument pdf=new PdfDocument();int pageNo=1;PdfDocument.Page page=pdf.startPage(new PdfDocument.PageInfo.Builder(595,842,pageNo).create());
       Canvas c=page.getCanvas();Paint p=new Paint(3);p.setColor(navy);p.setTextSize(22);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));c.drawText("FinanzTracker – Buchungsübersicht",40,52,p);
-      p.setTextSize(12);p.setTypeface(Typeface.DEFAULT);c.drawText("Konto: "+active()+"    Zeitraum: "+period+"    Erstellt: "+new SimpleDateFormat("dd.MM.yyyy",Locale.GERMANY).format(new Date()),40,78,p);
+      p.setTextSize(12);p.setTypeface(Typeface.DEFAULT);c.drawText("Konto: "+active()+"    Zeitraum: "+(filterMonth<0?"Ganzes Jahr":new String[]{"Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"}[filterMonth])+" "+filterYear+"    Erstellt: "+new SimpleDateFormat("dd.MM.yyyy",Locale.GERMANY).format(new Date()),40,78,p);
       double total=0;int y=120;p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));c.drawText("Datum",40,y,p);c.drawText("Typ",130,y,p);c.drawText("Zweck",220,y,p);c.drawText("Betrag CHF",470,y,p);p.setTypeface(Typeface.DEFAULT);y+=22;
       for(Tx t:list){if(y>790){pdf.finishPage(page);pageNo++;page=pdf.startPage(new PdfDocument.PageInfo.Builder(595,842,pageNo).create());c=page.getCanvas();y=50;}
         c.drawText(t.date,40,y,p);c.drawText(t.type,130,y,p);c.drawText(t.purpose.length()>34?t.purpose.substring(0,34):t.purpose,220,y,p);c.drawText(String.format(Locale.US,"%.2f",t.amount),470,y,p);
