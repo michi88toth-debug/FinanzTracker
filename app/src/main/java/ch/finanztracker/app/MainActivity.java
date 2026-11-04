@@ -73,9 +73,9 @@ public class MainActivity extends Activity {
   void buildUi(){
     String selectedAccount = account==null ? null : active();
     ScrollView scroll=new ScrollView(this);root=vertical();root.setPadding(16,12,16,24);root.setBackgroundColor(0xfff3f5f8);scroll.addView(root);setContentView(scroll);
-    LinearLayout header=vertical();header.setPadding(18,18,18,18);header.setBackground(bg(navy,24));
-    header.addView(text("🪙  FinanzTracker",25,Color.WHITE,true));
-    header.addView(text("Dein Überblick über Einnahmen und Ausgaben",13,0xffdce5ef,false));root.addView(header);
+    LinearLayout header=vertical();header.setPadding(18,18,18,18);header.setBackground(bg(green,24));
+    header.addView(text("🇨🇭  🪙  FinanzTracker",25,Color.WHITE,true));
+    header.addView(text("Dein Haushaltsbuch in CHF",13,0xffe5f5eb,false));root.addView(header);
     root.addView(text("KONTO",12,0xff657184,true));
     LinearLayout accountRow=horizontal();
     account=new Spinner(this);accountRow.addView(account,new LinearLayout.LayoutParams(0,54,1));
@@ -84,6 +84,9 @@ public class MainActivity extends Activity {
     account.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,accounts));
     if(selectedAccount!=null && accounts.contains(selectedAccount)) account.setSelection(accounts.indexOf(selectedAccount));
     account.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> p){}public void onItemSelected(AdapterView<?> p,View v,int n,long id){refresh();}});
+    LinearLayout actions=horizontal();Button addIn=button("+ Einnahme",green,Color.WHITE),addOut=button("+ Ausgabe",red,Color.WHITE);
+    actions.addView(addIn,new LinearLayout.LayoutParams(0,54,1));View spacer=new View(this);actions.addView(spacer,new LinearLayout.LayoutParams(8,1));actions.addView(addOut,new LinearLayout.LayoutParams(0,54,1));root.addView(actions);
+    addIn.setOnClickListener(v->newTransaction("Einnahme"));addOut.setOnClickListener(v->newTransaction("Ausgabe"));
     root.addView(text("ZEITRAUM",12,0xff657184,true));
     LinearLayout periods=horizontal();
     String[] months={"Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember","Ganzes Jahr"};
@@ -108,9 +111,6 @@ public class MainActivity extends Activity {
     cards.addView(inc,new LinearLayout.LayoutParams(0,-2,1));View gap=new View(this);cards.addView(gap,new LinearLayout.LayoutParams(10,1));cards.addView(out,new LinearLayout.LayoutParams(0,-2,1));root.addView(cards);
     LinearLayout saldo=vertical();saldo.setPadding(16,14,16,14);saldo.setBackground(bg(0xffe5edf8,20));
     saldo.addView(text("AKTUELLER SALDO",11,navy,true));balance=text("CHF 0.00",26,navy,true);saldo.addView(balance);root.addView(saldo);
-    LinearLayout actions=horizontal();Button addIn=button("+ Einnahme",green,Color.WHITE),addOut=button("+ Ausgabe",red,Color.WHITE);
-    actions.addView(addIn,new LinearLayout.LayoutParams(0,54,1));View spacer=new View(this);actions.addView(spacer,new LinearLayout.LayoutParams(8,1));actions.addView(addOut,new LinearLayout.LayoutParams(0,54,1));root.addView(actions);
-    addIn.setOnClickListener(v->newTransaction("Einnahme"));addOut.setOnClickListener(v->newTransaction("Ausgabe"));
     root.addView(text("LETZTE BUCHUNGEN",17,navy,true));entries=vertical();root.addView(entries);
     root.addView(text("EXPORT & EINSTELLUNGEN",12,0xff657184,true));
     Button xlsx=button("Excel-Datei (.xlsx) exportieren",navy,Color.WHITE);root.addView(xlsx);xlsx.setOnClickListener(v->exportExcel());
