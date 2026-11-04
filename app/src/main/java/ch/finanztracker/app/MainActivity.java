@@ -329,16 +329,54 @@ public class MainActivity extends Activity {
   void putZip(ZipOutputStream z,String name,String data)throws Exception{z.putNextEntry(new ZipEntry(name));z.write(data.getBytes("UTF-8"));z.closeEntry();}
   void exportPdf(){
     try{
-      ArrayList<Tx> list=visible();PdfDocument pdf=new PdfDocument();int pageNo=1;PdfDocument.Page page=pdf.startPage(new PdfDocument.PageInfo.Builder(595,842,pageNo).create());
-      Canvas c=page.getCanvas();Paint p=new Paint(3);p.setColor(navy);p.setTextSize(22);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));c.drawText("FinanzTracker – Buchungsübersicht",40,52,p);
-      p.setTextSize(12);p.setTypeface(Typeface.DEFAULT);c.drawText("Konto: "+active()+"    Zeitraum: "+(filterMonth<0?"Ganzes Jahr":new String[]{"Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"}[filterMonth])+" "+filterYear+"    Erstellt: "+new SimpleDateFormat("dd.MM.yyyy",Locale.GERMANY).format(new Date()),40,78,p);
-      double total=0;int y=120;p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));c.drawText("Datum",40,y,p);c.drawText("Typ",130,y,p);c.drawText("Zweck",220,y,p);c.drawText("Betrag CHF",470,y,p);p.setTypeface(Typeface.DEFAULT);y+=22;
-      for(Tx t:list){if(y>790){pdf.finishPage(page);pageNo++;page=pdf.startPage(new PdfDocument.PageInfo.Builder(595,842,pageNo).create());c=page.getCanvas();y=50;}
-        c.drawText(t.date,40,y,p);c.drawText(t.type,130,y,p);c.drawText(t.purpose.length()>34?t.purpose.substring(0,34):t.purpose,220,y,p);c.drawText(String.format(Locale.US,"%.2f",t.amount),470,y,p);
-        total+=t.type.equals("Einnahme")?t.amount:-t.amount;y+=21;
+      ArrayList<Tx> list=visible();
+      PdfDocument pdf=new PdfDocument();
+      int rowsPerPage=27;
+      int pageCount=Math.max(1,(list.size()+rowsPerPage-1)/rowsPerPage);
+      double total=0;
+      for(Tx t:list)total+=t.type.equals("Einnahme")?t.amount:-t.amount;
+      String period=(filterMonth<0?"Ganzes Jahr":new String[]{"Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember"}[filterMonth])+" "+filterYear;
+      for(int pageNo=0;pageNo<pageCount;pageNo++){
+        PdfDocument.Page page=pdf.startPage(new PdfDocument.PageInfo.Builder(595,842,pageNo+1).create());
+        Canvas canvas=page.getCanvas();
+        Paint paint=new Paint(3);
+        paint.setColor(0xff238957);canvas.drawRect(0,0,595,105,paint);
+        paint.setColor(Color.WHITE);paint.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));paint.setTextSize(22);
+        canvas.drawText("FinanzTracker",40,43,paint);
+        paint.setTypeface(Typeface.DEFAULT);paint.setTextSize(11);
+        canvas.drawText("Buchungsübersicht · "+active()+" · "+period,40,68,paint);
+        canvas.drawText("Seite "+(pageNo+1)+" von "+pageCount,470,91,paint);
+        int y=137;
+        paint.setColor(0xffe8edf2);canvas.drawRect(32,y-21,563,y+5,paint);
+        paint.setColor(0xff142b4a);paint.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));paint.setTextSize(10);
+        canvas.drawText("DATUM",42,y-4,paint);canvas.drawText("ART",125,y-4,paint);canvas.drawText("ZWECK",210,y-4,paint);canvas.drawText("BETRAG CHF",460,y-4,paint);
+        paint.setTypeface(Typeface.DEFAULT);paint.setTextSize(10);
+        int from=pageNo*rowsPerPage,to=Math.min(list.size(),from+rowsPerPage);
+        for(int i=from;i<to;i++){
+          Tx t=list.get(i);y+=23;
+          if((i-from)%2==1){paint.setColor(0xfff5f7f9);canvas.drawRect(32,y-17,563,y+5,paint);}
+          paint.setColor(0xff354052);
+          canvas.drawText(t.date,42,y,paint);
+          canvas.drawText(t.type,125,y,paint);
+          String purpose=t.purpose==null?"":t.purpose;
+          if(purpose.length()>38)purpose=purpose.substring(0,35)+"...";
+          canvas.drawText(purpose,210,y,paint);
+          paint.setColor(t.type.equals("Einnahme")?0xff238957:0xffc34444);
+          String amount=(t.type.equals("Einnahme")?"+ ":"- ")+String.format(Locale.GERMANY,"%.2f",t.amount);
+          canvas.drawText(amount,460,y,paint);
+        }
+        if(pageNo==pageCount-1){
+          y=Math.min(790,Math.max(y+42,190));
+          paint.setColor(0xffe5edf8);canvas.drawRoundRect(32,y-24,563,y+15,10,10,paint);
+          paint.setColor(0xff142b4a);paint.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));paint.setTextSize(13);
+          canvas.drawText("Saldo der angezeigten Buchungen",44,y,paint);
+          canvas.drawText("CHF "+String.format(Locale.GERMANY,"%.2f",total),430,y,paint);
+        }
+        paint.setColor(0xff7b8491);paint.setTypeface(Typeface.DEFAULT);paint.setTextSize(9);
+        canvas.drawText("Erstellt am "+new SimpleDateFormat("dd.MM.yyyy",Locale.GERMANY).format(new Date()),40,820,paint);
+        pdf.finishPage(page);
       }
-      y=Math.min(y+28,810);p.setTypeface(Typeface.create("sans-serif",Typeface.BOLD));c.drawText("Saldo der angezeigten Buchungen: CHF "+String.format(Locale.US,"%.2f",total),40,y,p);
-      pdf.finishPage(page);ByteArrayOutputStream out=new ByteArrayOutputStream();pdf.writeTo(out);pdf.close();
+      ByteArrayOutputStream out=new ByteArrayOutputStream();pdf.writeTo(out);pdf.close();
       startExport(out.toByteArray(),"application/pdf","FinanzTracker_"+active()+".pdf");
     }catch(Exception e){toast("PDF-Export fehlgeschlagen.");}
   }
