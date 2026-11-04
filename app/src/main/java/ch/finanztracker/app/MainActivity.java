@@ -146,10 +146,22 @@ public class MainActivity extends Activity {
     }
   }
   void manageAccounts(){
-    String[] options={"Konto hinzufügen","Ausgewähltes Konto umbenennen","Ausgewähltes Konto löschen"};
+    String[] options={"Kontenübersicht","Konto hinzufügen","Ausgewähltes Konto umbenennen","Ausgewähltes Konto löschen"};
     new AlertDialog.Builder(this).setTitle("Konten verwalten").setItems(options,(d,w)->{
-      if(w==0)accountNameDialog(null);else if(w==1)accountNameDialog(active());else deleteAccount();
+      if(w==0)showAccountOverview();else if(w==1)accountNameDialog(null);else if(w==2)accountNameDialog(active());else deleteAccount();
     }).show();
+  }
+  void showAccountOverview(){
+    LinearLayout box=vertical();double grand=0;
+    for(String name:accounts){
+      double value=0;
+      for(Tx t:txs)if(t.account.equals(name))value+=t.type.equals("Einnahme")?t.amount:-t.amount;
+      grand+=value;
+      box.addView(text(name+"     "+money(value),16,navy,true));
+    }
+    View line=new View(this);line.setBackgroundColor(0xffd8dee8);box.addView(line,new LinearLayout.LayoutParams(-1,2));
+    box.addView(text("Gesamtsaldo     "+money(grand),18,green,true));
+    new AlertDialog.Builder(this).setTitle("Alle Konten").setView(box).setPositiveButton("Schliessen",null).show();
   }
   void accountNameDialog(String old){
     EditText e=new EditText(this);e.setSingleLine(true);e.setHint("Kontoname");if(old!=null)e.setText(old);
