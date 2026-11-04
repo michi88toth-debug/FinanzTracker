@@ -119,6 +119,8 @@ public class MainActivity extends Activity {
     Button xlsx=button("Excel-Datei (.xlsx) exportieren",navy,Color.WHITE);root.addView(xlsx);xlsx.setOnClickListener(v->exportExcel());
     Button pdf=button("PDF für A4-Druck exportieren",0xff536b89,Color.WHITE);root.addView(pdf);pdf.setOnClickListener(v->exportPdf());
     Button pin=button(getPreferences(0).getBoolean("pin_enabled",false)?"PIN-Schutz: aktiviert":"PIN-Schutz: deaktiviert",0xffe2e7ee,navy);root.addView(pin);pin.setOnClickListener(v->pinSettings());
+    Button backup=button("Datensicherung erstellen",0xffe2e7ee,navy);root.addView(backup);backup.setOnClickListener(v->exportBackup());
+    Button restore=button("Datensicherung wiederherstellen",0xffe2e7ee,navy);root.addView(restore);restore.setOnClickListener(v->importBackup());
     LinearLayout footer=horizontal();footer.setPadding(8,8,8,8);footer.setBackgroundColor(Color.WHITE);
     footer.addView(out,new LinearLayout.LayoutParams(0,-2,1));View footerGap1=new View(this);footer.addView(footerGap1,new LinearLayout.LayoutParams(5,1));
     footer.addView(inc,new LinearLayout.LayoutParams(0,-2,1));View footerGap2=new View(this);footer.addView(footerGap2,new LinearLayout.LayoutParams(5,1));
@@ -260,11 +262,19 @@ public class MainActivity extends Activity {
     pendingExport=data;pendingMime=mime;pendingName=name;
     Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType(mime);i.putExtra(Intent.EXTRA_TITLE,name);startActivityForResult(i,77);
   }
+  void exportBackup(){
+    try{JSONObject backup=new JSONObject();backup.put("format","FinanzTracker-Backup");backup.put("version",1);backup.put("created",new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US).format(new Date()));JSONArray a=new JSONArray(),x=new JSONArray();for(String name:accounts)a.put(name);for(Tx t:txs){JSONObject j=new JSONObject();j.put("a",t.account);j.put("t",t.type);j.put("d",t.date);j.put("p",t.purpose);j.put("n",t.amount);x.put(j);}backup.put("accounts",a);backup.put("tx",x);startExport(backup.toString(2).getBytes("UTF-8"),"application/json","FinanzTracker_Backup.json");}catch(Exception e){toast("Datensicherung konnte nicht erstellt werden.");}
+  }
+  void importBackup(){
+    Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType("application/json");startActivityForResult(i,79);
+  }
+  void restoreBackup(Uri uri){
+    try{InputStream in=getContentResolver().openInputStream(uri);ByteArrayOutputStream bytes=new ByteArrayOutputStream();byte[] buf=new byte[4096];int n;while((n=in.read(buf))>0)bytes.write(buf,0,n);in.close();JSONObject o=new JSONObject(new String(bytes.toByteArray(),"UTF-8"));if(!"FinanzTracker-Backup".equals(o.optString("format")))throw new Exception("Ungültige Sicherungsdatei");JSONArray a=o.getJSONArray("accounts"),x=o.getJSONArray("tx");ArrayList<String> nextAccounts=new ArrayList<>();ArrayList<Tx> nextTxs=new ArrayList<>();for(int k=0;k<a.length();k++){String name=a.getString(k).trim();if(!name.isEmpty()&&!nextAccounts.contains(name))nextAccounts.add(name);}if(nextAccounts.isEmpty())throw new Exception("Keine Konten vorhanden");for(int k=0;k<x.length();k++){JSONObject j=x.getJSONObject(k);String acc=j.getString("a"),type=j.getString("t"),date=j.getString("d");double amount=j.getDouble("n");if(!nextAccounts.contains(acc)||(!type.equals("Einnahme")&&!type.equals("Ausgabe"))||amount<=0)continue;nextTxs.add(new Tx(acc,type,date,j.optString("p",""),amount));}accounts.clear();accounts.addAll(nextAccounts);txs.clear();txs.addAll(nextTxs);save();buildUi();toast("Datensicherung wiederhergestellt.");}catch(Exception e){toast("Wiederherstellung fehlgeschlagen: Datei ungültig oder nicht lesbar.");}
+  }
   @Override protected void onActivityResult(int request,int result,Intent data){
-    super.onActivityResult(request,result,data);if(request==77&&result==RESULT_OK&&data!=null){
-      try{OutputStream out=getContentResolver().openOutputStream(data.getData());out.write(pendingExport);out.close();toast("Export gespeichert.");}
-      catch(Exception e){toast("Export konnte nicht gespeichert werden.");}
-    }
+    super.onActivityResult(request,result,data);if(result!=RESULT_OK||data==null)return;
+    if(request==77){try{OutputStream out=getContentResolver().openOutputStream(data.getData());if(out==null)throw new Exception();out.write(pendingExport);out.close();toast("Export gespeichert.");}catch(Exception e){toast("Export konnte nicht gespeichert werden.");}}
+    else if(request==79){new AlertDialog.Builder(this).setTitle("Sicherung wiederherstellen?").setMessage("Die aktuellen Konten und Buchungen werden durch den Inhalt der Sicherungsdatei ersetzt.").setNegativeButton("Abbrechen",null).setPositiveButton("Wiederherstellen",(d,w)->restoreBackup(data.getData())).show();}
   }
   void exportExcel(){
     try{
