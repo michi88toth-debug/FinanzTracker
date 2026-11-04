@@ -138,6 +138,7 @@ public class MainActivity extends Activity {
       row.addView(info,new LinearLayout.LayoutParams(0,-2,1));
       row.addView(text((t.type.equals("Einnahme")?"+ ":"− ")+money(t.amount),14,t.type.equals("Einnahme")?green:red,true));
       LinearLayout.LayoutParams lp=new LinearLayout.LayoutParams(-1,-2);lp.bottomMargin=7;entries.addView(row,lp);
+      row.setOnClickListener(v->editTransaction(t));
     }
   }
   void manageAccounts(){
@@ -171,6 +172,28 @@ public class MainActivity extends Activity {
         String date=new SimpleDateFormat("yyyy-MM-dd",Locale.US).format(chosen.getTime());txs.add(new Tx(active(),type,date,purpose.getText().toString().trim(),n));save();refresh();
       }catch(Exception e){toast("Bitte einen gültigen Betrag eingeben.");}
     }).show();
+  }
+  void editTransaction(Tx tx){
+    String[] actions={"Bearbeiten","Löschen","Abbrechen"};
+    new AlertDialog.Builder(this).setTitle("Willst du den Eintrag bearbeiten?")
+      .setItems(actions,(dialog,which)->{
+        if(which==0){
+          LinearLayout box=vertical();
+          EditText purpose=new EditText(this);purpose.setHint("Zweck / Beschreibung");purpose.setText(tx.purpose);box.addView(purpose);
+          EditText amount=new EditText(this);amount.setHint("Betrag in CHF");amount.setInputType(8194);amount.setText(String.valueOf(tx.amount));box.addView(amount);
+          TextView date=text("Datum: "+tx.date,14,navy,false);box.addView(date);
+          final Calendar chosen=Calendar.getInstance();
+          try{chosen.setTime(new SimpleDateFormat("yyyy-MM-dd",Locale.US).parse(tx.date));}catch(Exception ignored){}
+          date.setOnClickListener(v->new DatePickerDialog(this,(view,y,m,d)->{chosen.set(y,m,d);date.setText("Datum: "+String.format(Locale.GERMANY,"%02d.%02d.%04d",d,m+1,y));},chosen.get(Calendar.YEAR),chosen.get(Calendar.MONTH),chosen.get(Calendar.DAY_OF_MONTH)).show());
+          new AlertDialog.Builder(this).setTitle("Buchung bearbeiten").setView(box).setNegativeButton("Abbrechen",null).setPositiveButton("Speichern",(d,w)->{
+            try{double n=Double.parseDouble(amount.getText().toString().trim().replace(',','.'));if(n<=0)throw new Exception();
+              tx.purpose=purpose.getText().toString().trim();tx.amount=n;tx.date=new SimpleDateFormat("yyyy-MM-dd",Locale.US).format(chosen.getTime());save();refresh();
+            }catch(Exception e){toast("Bitte einen gültigen Betrag eingeben.");}
+          }).show();
+        }else if(which==1){
+          new AlertDialog.Builder(this).setTitle("Eintrag löschen?").setMessage("Diese Buchung wird dauerhaft gelöscht.").setNegativeButton("Abbrechen",null).setPositiveButton("Löschen",(d,w)->{txs.remove(tx);save();refresh();}).show();
+        }
+      }).show();
   }
   void toast(String s){Toast.makeText(this,s,Toast.LENGTH_LONG).show();}
   void pinSettings(){
