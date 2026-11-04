@@ -7,6 +7,8 @@ import android.graphics.*;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.pdf.PdfDocument;
 import android.net.Uri;
+import android.provider.DocumentsContract;
+import android.database.Cursor;
 import android.view.*;
 import android.widget.*;
 import org.json.*;
@@ -58,6 +60,7 @@ public class MainActivity extends Activity {
       for(Tx t:txs){JSONObject j=new JSONObject();j.put("a",t.account);j.put("t",t.type);j.put("d",t.date);j.put("p",t.purpose);j.put("n",t.amount);x.put(j);}
       o.put("accounts",a);o.put("tx",x);
       getPreferences(0).edit().putString("data",o.toString()).apply();
+      autoCloudBackup(o.toString());
     } catch(Exception ignored) {}
   }
   TextView text(String s,int size,int color,boolean bold){
@@ -121,6 +124,7 @@ public class MainActivity extends Activity {
     Button pin=button(getPreferences(0).getBoolean("pin_enabled",false)?"PIN-Schutz: aktiviert":"PIN-Schutz: deaktiviert",0xffe2e7ee,navy);root.addView(pin);pin.setOnClickListener(v->pinSettings());
     Button backup=button("Datensicherung erstellen",0xffe2e7ee,navy);root.addView(backup);backup.setOnClickListener(v->exportBackup());
     Button restore=button("Datensicherung wiederherstellen",0xffe2e7ee,navy);root.addView(restore);restore.setOnClickListener(v->importBackup());
+    Button cloud=button("Automatische Cloud-Sicherung einrichten",0xffe2e7ee,navy);root.addView(cloud);cloud.setOnClickListener(v->chooseCloudFolder());
     LinearLayout footer=horizontal();footer.setPadding(8,8,8,8);footer.setBackgroundColor(Color.WHITE);
     cards.removeView(out);cards.removeView(inc);footer.addView(out,new LinearLayout.LayoutParams(0,-2,1));View footerGap1=new View(this);footer.addView(footerGap1,new LinearLayout.LayoutParams(5,1));
     footer.addView(inc,new LinearLayout.LayoutParams(0,-2,1));View footerGap2=new View(this);footer.addView(footerGap2,new LinearLayout.LayoutParams(5,1));
@@ -262,6 +266,22 @@ public class MainActivity extends Activity {
     pendingExport=data;pendingMime=mime;pendingName=name;
     Intent i=new Intent(Intent.ACTION_CREATE_DOCUMENT);i.addCategory(Intent.CATEGORY_OPENABLE);i.setType(mime);i.putExtra(Intent.EXTRA_TITLE,name);startActivityForResult(i,77);
   }
+  void chooseCloudFolder(){
+    Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);i.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION|Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);startActivityForResult(i,80);
+  }
+  void autoCloudBackup(String json){
+    String saved=getPreferences(0).getString("cloud_tree","");
+    if(saved.isEmpty())return;
+    try{
+      Uri tree=Uri.parse(saved);String treeId=DocumentsContract.getTreeDocumentId(tree);
+      Uri children=DocumentsContract.buildChildDocumentsUriUsingTree(tree,treeId);
+      Cursor cursor=getContentResolver().query(children,new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID,DocumentsContract.Document.COLUMN_DISPLAY_NAME},null,null,null);
+      if(cursor!=null){while(cursor.moveToNext()){if("FinanzTracker_AutoBackup.json".equals(cursor.getString(1))){Uri old=DocumentsContract.buildDocumentUriUsingTree(tree,cursor.getString(0));DocumentsContract.deleteDocument(getContentResolver(),old);}}cursor.close();}
+      Uri file=DocumentsContract.createDocument(getContentResolver(),tree, "application/json","FinanzTracker_AutoBackup.json");
+      if(file==null)throw new Exception("Datei konnte nicht erstellt werden");
+      OutputStream out=getContentResolver().openOutputStream(file,"w");if(out==null)throw new Exception("Datei nicht beschreibbar");out.write(json.getBytes("UTF-8"));out.close();
+    }catch(Exception ignored){}
+  }
   void exportBackup(){
     try{JSONObject backup=new JSONObject();backup.put("format","FinanzTracker-Backup");backup.put("version",1);backup.put("created",new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US).format(new Date()));JSONArray a=new JSONArray(),x=new JSONArray();for(String name:accounts)a.put(name);for(Tx t:txs){JSONObject j=new JSONObject();j.put("a",t.account);j.put("t",t.type);j.put("d",t.date);j.put("p",t.purpose);j.put("n",t.amount);x.put(j);}backup.put("accounts",a);backup.put("tx",x);startExport(backup.toString(2).getBytes("UTF-8"),"application/json","FinanzTracker_Backup.json");}catch(Exception e){toast("Datensicherung konnte nicht erstellt werden.");}
   }
@@ -275,6 +295,7 @@ public class MainActivity extends Activity {
     super.onActivityResult(request,result,data);if(result!=RESULT_OK||data==null)return;
     if(request==77){try{OutputStream out=getContentResolver().openOutputStream(data.getData());if(out==null)throw new Exception();out.write(pendingExport);out.close();toast("Export gespeichert.");}catch(Exception e){toast("Export konnte nicht gespeichert werden.");}}
     else if(request==79){new AlertDialog.Builder(this).setTitle("Sicherung wiederherstellen?").setMessage("Die aktuellen Konten und Buchungen werden durch den Inhalt der Sicherungsdatei ersetzt.").setNegativeButton("Abbrechen",null).setPositiveButton("Wiederherstellen",(d,w)->restoreBackup(data.getData())).show();}
+    else if(request==80){try{getContentResolver().takePersistableUriPermission(data.getData(),Intent.FLAG_GRANT_READ_URI_PERMISSION|Intent.FLAG_GRANT_WRITE_URI_PERMISSION);getPreferences(0).edit().putString("cloud_tree",data.getData().toString()).apply();autoCloudBackup(getPreferences(0).getString("data","{}"));toast("Automatische Sicherung eingerichtet.");}catch(Exception e){toast("Cloud-Ordner konnte nicht eingerichtet werden.");}}
   }
   void exportExcel(){
     try{
