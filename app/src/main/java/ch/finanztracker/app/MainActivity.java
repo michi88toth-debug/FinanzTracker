@@ -29,6 +29,7 @@ public class MainActivity extends Activity {
   int filterYear = Calendar.getInstance().get(Calendar.YEAR);
   int navy=0xff142b4a, gold=0xffe2b64f, green=0xff238957, red=0xffc34444;
   byte[] pendingExport;
+  boolean cloudBackupWarned=false;
   String pendingMime, pendingName;
   static class Tx {
     String account,type,date,purpose; double amount;
@@ -275,12 +276,24 @@ public class MainActivity extends Activity {
     try{
       Uri tree=Uri.parse(saved);String treeId=DocumentsContract.getTreeDocumentId(tree);
       Uri children=DocumentsContract.buildChildDocumentsUriUsingTree(tree,treeId);
+      Uri file=null;
       Cursor cursor=getContentResolver().query(children,new String[]{DocumentsContract.Document.COLUMN_DOCUMENT_ID,DocumentsContract.Document.COLUMN_DISPLAY_NAME},null,null,null);
-      if(cursor!=null){while(cursor.moveToNext()){if("FinanzTracker_AutoBackup.json".equals(cursor.getString(1))){Uri old=DocumentsContract.buildDocumentUriUsingTree(tree,cursor.getString(0));DocumentsContract.deleteDocument(getContentResolver(),old);}}cursor.close();}
-      Uri file=DocumentsContract.createDocument(getContentResolver(),tree, "application/json","FinanzTracker_AutoBackup.json");
-      if(file==null)throw new Exception("Datei konnte nicht erstellt werden");
-      OutputStream out=getContentResolver().openOutputStream(file,"w");if(out==null)throw new Exception("Datei nicht beschreibbar");out.write(json.getBytes("UTF-8"));out.close();
-    }catch(Exception ignored){}
+      if(cursor!=null){
+        try{while(cursor.moveToNext()){
+          if("FinanzTracker_AutoBackup.json".equals(cursor.getString(1))){
+            file=DocumentsContract.buildDocumentUriUsingTree(tree,cursor.getString(0));break;
+          }
+        }}finally{cursor.close();}
+      }
+      if(file==null)file=DocumentsContract.createDocument(getContentResolver(),tree,"application/json","FinanzTracker_AutoBackup.json");
+      if(file==null)throw new IOException("Sicherungsdatei konnte nicht geöffnet werden");
+      OutputStream out=getContentResolver().openOutputStream(file,"wt");
+      if(out==null)throw new IOException("Sicherungsdatei ist nicht beschreibbar");
+      try{out.write(json.getBytes("UTF-8"));out.flush();}finally{out.close();}
+      cloudBackupWarned=false;
+    }catch(Exception e){
+      if(!cloudBackupWarned){cloudBackupWarned=true;runOnUiThread(()->toast("Cloud-Sicherung fehlgeschlagen. Bitte Ordnerfreigabe prüfen und Sicherung neu einrichten."));}
+    }
   }
   void exportBackup(){
     try{JSONObject backup=new JSONObject();backup.put("format","FinanzTracker-Backup");backup.put("version",1);backup.put("created",new SimpleDateFormat("yyyy-MM-dd HH:mm:ss",Locale.US).format(new Date()));JSONArray a=new JSONArray(),x=new JSONArray();for(String name:accounts)a.put(name);for(Tx t:txs){JSONObject j=new JSONObject();j.put("a",t.account);j.put("t",t.type);j.put("d",t.date);j.put("p",t.purpose);j.put("n",t.amount);x.put(j);}backup.put("accounts",a);backup.put("tx",x);startExport(backup.toString(2).getBytes("UTF-8"),"application/json","FinanzTracker_Backup.json");}catch(Exception e){toast("Datensicherung konnte nicht erstellt werden.");}
