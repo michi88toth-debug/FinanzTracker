@@ -21,7 +21,7 @@ public class MainActivity extends Activity {
   LinearLayout root, entries;
   Spinner account;
   TextView income, expense, balance;
-  String period = "Monat";
+  int filterMonth = Calendar.getInstance().get(Calendar.MONTH);\n  int filterYear = Calendar.getInstance().get(Calendar.YEAR);
   int navy=0xff142b4a, gold=0xffe2b64f, green=0xff238957, red=0xffc34444;
   byte[] pendingExport;
   String pendingMime, pendingName;
@@ -86,12 +86,20 @@ public class MainActivity extends Activity {
     account.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onNothingSelected(AdapterView<?> p){}public void onItemSelected(AdapterView<?> p,View v,int n,long id){refresh();}});
     root.addView(text("ZEITRAUM",12,0xff657184,true));
     LinearLayout periods=horizontal();
-    for(String p:new String[]{"Tag","Woche","Monat","Jahr"}){
-      Button b=button(p,p.equals(period)?navy:0xffe2e7ee,p.equals(period)?Color.WHITE:navy);
-      b.setTextSize(12);periods.addView(b,new LinearLayout.LayoutParams(0,46,1));
-      b.setOnClickListener(v->{period=p;buildUi();refresh();});
-    }
+    String[] months={"Januar","Februar","März","April","Mai","Juni","Juli","August","September","Oktober","November","Dezember","Ganzes Jahr"};
+    Spinner monthSpinner=new Spinner(this);
+    monthSpinner.setAdapter(new ArrayAdapter<String>(this,android.R.layout.simple_spinner_dropdown_item,months));
+    monthSpinner.setSelection(filterMonth<0?12:filterMonth);
+    periods.addView(monthSpinner,new LinearLayout.LayoutParams(0,52,1));
+    EditText yearField=new EditText(this);yearField.setSingleLine(true);yearField.setInputType(2);yearField.setText(String.valueOf(filterYear));yearField.setHint("Jahr");
+    periods.addView(yearField,new LinearLayout.LayoutParams(0,52,1));
     root.addView(periods);
+    monthSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){
+      public void onNothingSelected(AdapterView<?> p){}
+      public void onItemSelected(AdapterView<?> p,View v,int n,long id){int next=n==12?-1:n;if(next!=filterMonth){filterMonth=next;refresh();}}
+    });
+    yearField.setOnFocusChangeListener((v,hasFocus)->{if(!hasFocus){try{int y=Integer.parseInt(yearField.getText().toString());if(y>=1900&&y<=2200){filterYear=y;refresh();}}catch(Exception ignored){yearField.setText(String.valueOf(filterYear));}}});
+    yearField.setOnEditorActionListener((v,action,event)->{try{int y=Integer.parseInt(yearField.getText().toString());if(y>=1900&&y<=2200)filterYear=y;else throw new Exception();refresh();}catch(Exception e){yearField.setText(String.valueOf(filterYear));}return true;});
     LinearLayout cards=horizontal();cards.setPadding(0,12,0,8);
     LinearLayout inc=vertical(),out=vertical();inc.setPadding(12,12,12,12);out.setPadding(12,12,12,12);
     inc.setBackground(bg(0xffe2f3e9,20));out.setBackground(bg(0xffffe8e8,20));
@@ -112,13 +120,9 @@ public class MainActivity extends Activity {
   }
   boolean inPeriod(String date){
     try{
-      Calendar c=Calendar.getInstance(),n=Calendar.getInstance();
+      Calendar c=Calendar.getInstance();
       c.setTime(new SimpleDateFormat("yyyy-MM-dd",Locale.US).parse(date));
-      if(period.equals("Tag"))return c.get(Calendar.YEAR)==n.get(Calendar.YEAR)&&c.get(Calendar.DAY_OF_YEAR)==n.get(Calendar.DAY_OF_YEAR);
-      if(period.equals("Monat"))return c.get(Calendar.YEAR)==n.get(Calendar.YEAR)&&c.get(Calendar.MONTH)==n.get(Calendar.MONTH);
-      if(period.equals("Jahr"))return c.get(Calendar.YEAR)==n.get(Calendar.YEAR);
-      n.set(Calendar.DAY_OF_WEEK,Calendar.MONDAY);n.set(Calendar.HOUR_OF_DAY,0);n.set(Calendar.MINUTE,0);n.set(Calendar.SECOND,0);n.set(Calendar.MILLISECOND,0);
-      return !c.getTime().before(n.getTime());
+      return c.get(Calendar.YEAR)==filterYear&&(filterMonth<0||c.get(Calendar.MONTH)==filterMonth);
     }catch(Exception e){return false;}
   }
   ArrayList<Tx> visible(){
